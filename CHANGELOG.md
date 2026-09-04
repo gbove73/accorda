@@ -18,3 +18,8 @@ progetto adotta [Semantic Versioning](https://semver.org/lang/it/).
 - Test numerici deterministici dell'algoritmo e documentazione di sviluppo.
 - Strumenti WebMCP per leggere e impostare la configurazione attraverso gli stessi
   controlli dell'interfaccia, senza automatizzare il consenso al microfono.
+
+### Fixed
+
+- Evitati aggiornamenti ripetuti quando una corda già confermata rimane stabilmente
+  intonata durante una sessione di ascolto prolungata.

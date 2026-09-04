@@ -133,6 +133,11 @@ export default function Home() {
       return;
     }
 
+    if (tunedStrings.has(assistedTarget.index)) {
+      holdStateRef.current = null;
+      return;
+    }
+
     const qualifies =
       Math.abs(assistedTarget.cents) <= 4 &&
       detection.confidence >= 0.72 &&
@@ -150,9 +155,14 @@ export default function Home() {
     }
 
     if (now - currentHold.startedAt >= 650) {
-      setTunedStrings((current) => new Set(current).add(assistedTarget.index));
+      setTunedStrings((current) => {
+        // Restituire lo stesso insieme evita un nuovo render quando la corda è già confermata.
+        if (current.has(assistedTarget.index)) return current;
+        return new Set(current).add(assistedTarget.index);
+      });
+      holdStateRef.current = null;
     }
-  }, [assistedTarget, detection]);
+  }, [assistedTarget, detection, tunedStrings]);
 
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
