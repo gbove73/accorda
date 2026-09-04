@@ -19,6 +19,13 @@ progetto adotta [Semantic Versioning](https://semver.org/lang/it/).
 - Strumenti WebMCP per leggere e impostare la configurazione attraverso gli stessi
   controlli dell'interfaccia, senza automatizzare il consenso al microfono.
 
+### Changed
+
+- Restringe a ±1 cent la zona considerata intonata e il completamento automatico
+  delle corde, con un indicatore visivo coerente con la nuova tolleranza.
+- Rafforza i test numerici su tutto il registro della chitarra, includendo segnali
+  armonici, rumore deterministico e scostamenti frazionali dalla nota di riferimento.
+
 ### Fixed
 
 - Evitati aggiornamenti ripetuti quando una corda già confermata rimane stabilmente

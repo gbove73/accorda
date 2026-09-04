@@ -35,6 +35,7 @@ import {
 
 const DIAL_TICKS = Array.from({ length: 21 }, (_, index) => index);
 const HISTORY_CAPACITY = 56;
+const IN_TUNE_TOLERANCE_CENTS = 1;
 
 type HoldState = {
   index: number;
@@ -105,7 +106,9 @@ export default function Home() {
   const detectedFrequency = detection?.frequency;
   const detectedCents = displayedNote?.cents;
   const isInTune = Boolean(
-    detection && Math.abs(cents) <= 4 && detection.stability >= 64,
+    detection &&
+      Math.abs(cents) <= IN_TUNE_TOLERANCE_CENTS &&
+      detection.stability >= 64,
   );
   const dialAngle = Math.max(-50, Math.min(50, cents)) * 1.02;
   const historyPoints = history
@@ -139,7 +142,7 @@ export default function Home() {
     }
 
     const qualifies =
-      Math.abs(assistedTarget.cents) <= 4 &&
+      Math.abs(assistedTarget.cents) <= IN_TUNE_TOLERANCE_CENTS &&
       detection.confidence >= 0.72 &&
       detection.stability >= 64;
     if (!qualifies) {
@@ -210,13 +213,13 @@ export default function Home() {
 
       <section className="intro" id="top">
         <div>
-          <p className="eyebrow">Studio accuracy · Zero latency feel</p>
+          <p className="eyebrow">Precisione obiettivo ±1 cent · Risposta in tempo reale</p>
           <h1>Accorda il suono, non lo schermo.</h1>
         </div>
         <p>
-          Un accordatore cromatico ad alta precisione che distingue la fondamentale
-          dalle armoniche e stabilizza la lettura senza nascondere il movimento reale
-          della nota.
+          Un accordatore cromatico con obiettivo ±1 cent su un segnale stabile:
+          distingue la fondamentale dalle armoniche e stabilizza la lettura senza
+          nascondere il movimento reale della nota.
         </p>
       </section>
 
@@ -439,9 +442,14 @@ export default function Home() {
               e filtro adattivo in dominio cent.
             </p>
             <div>
+              <span>Precisione obiettivo</span>
+              <strong>±1 cent*</strong>
+            </div>
+            <div>
               <span>Range</span>
               <strong>{frequencyRange.min}–{frequencyRange.max} Hz</strong>
             </div>
+            <small>* Con segnale stabile e microfono adeguato.</small>
           </div>
 
           {selectedTone && (
