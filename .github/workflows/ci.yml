@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Verify project
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+          npm run typecheck
+          npm run lint
+          npm run build
+
+      - name: Verify Contabo export
+        env:
+          ACCORDA_STATIC_EXPORT: 'true'
+        run: |
+          npm run build
+          test -f dist/client/index.html
+          grep -q '/accorda/_next/' dist/client/index.html

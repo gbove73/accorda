@@ -22,7 +22,7 @@
     "start": "wrangler dev --config dist/server/wrangler.json",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "lint": "oxlint app/page.tsx app/layout.tsx hooks/use-tuner.ts hooks/use-tuner-webmcp.ts lib tests",
+    "lint": "oxlint app/page.tsx app/tuner-client.tsx app/layout.tsx hooks/use-tuner.ts hooks/use-tuner-webmcp.ts lib tests",
     "format": "oxfmt"
   },
   "dependencies": {

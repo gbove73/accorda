@@ -2,6 +2,7 @@ export type PolyphonicPitchDetection = {
   cents: number;
   confidence: number;
   frequency: number;
+  salience: number;
   targetFrequency: number;
 };
 
@@ -74,14 +75,19 @@ export function detectPolyphonicPitches(
       (averageSignalToNoiseDb - settings.minSignalToNoiseDb) / 32 * 0.75 +
         Math.min(1, candidates.length / 3) * 0.25,
     );
+    const salience = candidates.reduce(
+      (sum, candidate) => sum + Math.sqrt(candidate.relativePower),
+      0,
+    ) / candidates.length;
 
-    return { cents, confidence, frequency, targetFrequency };
+    return { cents, confidence, frequency, salience, targetFrequency };
   });
 }
 
 type HarmonicCandidate = {
   contaminated: boolean;
   frequency: number;
+  relativePower: number;
   signalToNoiseDb: number;
 };
 
@@ -134,6 +140,7 @@ function collectHarmonicCandidates({
     candidates.push({
       contaminated,
       frequency: refinedBin * binWidth / harmonic,
+      relativePower: peakPower / strongestSpectrumPower,
       signalToNoiseDb,
     });
   }

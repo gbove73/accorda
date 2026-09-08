@@ -122,6 +122,10 @@ footer {
 .brand strong { display: block; font-size: 17px; letter-spacing: .17em; line-height: 1; }
 .brand small { color: #8290a8; display: block; font-size: 11px; letter-spacing: .16em; margin-top: 5px; text-transform: uppercase; }
 
+.header-actions { align-items: center; display: flex; gap: 9px; }
+.home-link { align-items: center; border: 1px solid rgba(255,122,110,.22); border-radius: 999px; color: var(--brand-bright); display: flex; font-size: 13px; gap: 7px; padding: 8px 12px; text-decoration: none; transition: 160ms ease; }
+.home-link:hover { background: rgba(255,122,110,.09); border-color: rgba(255,122,110,.46); }
+.home-link svg { height: 14px; width: 14px; }
 .privacy-chip { align-items: center; background: rgba(167,139,250,.08); border: 1px solid rgba(167,139,250,.24); border-radius: 999px; color: #cdbffd; display: flex; font-size: 13px; gap: 8px; padding: 8px 13px; }
 .privacy-chip svg { height: 14px; width: 14px; }
 
@@ -313,6 +317,8 @@ footer svg { height: 12px; width: 12px; }
 @media (max-width: 780px) {
   .site-header, .intro, .tuner-workspace, footer { width: calc(100% - 24px); }
   .site-header { height: 70px; }
+  .home-link span { display: none; }
+  .home-link { padding: 9px; }
   .privacy-chip span { display: none; }
   .privacy-chip { padding: 9px; }
   .intro { display: block; padding: 28px 2px 20px; }

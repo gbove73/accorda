@@ -7,6 +7,10 @@ import {
   detectPolyphonicPitches,
   type PolyphonicPitchDetection,
 } from '@/lib/polyphonic-detector';
+import {
+  getAutomaticModeCandidate,
+  selectDominantPolyphonicPitch,
+} from '@/lib/tuner-mode';
 
 export type TunerMode = 'auto' | 'polyphonic' | 'precision';
 export type ActiveTunerMode = Exclude<TunerMode, 'auto'>;
@@ -183,36 +187,43 @@ export function useTuner({
         });
 
         if (result && result.confidence >= 0.55) {
-          const rawNote = 69 + 12 * Math.log2(result.frequency / 440);
-          const noteWindow = [...noteWindowRef.current, rawNote].slice(-NOTE_WINDOW_SIZE);
-          noteWindowRef.current = noteWindow;
-          const medianNote = median(noteWindow);
-          const previousNote = smoothedNoteRef.current;
-          const smoothing = result.confidence > 0.88 ? 0.46 : 0.3;
-          const smoothedNote = previousNote === null
-            ? medianNote
-            : previousNote + (medianNote - previousNote) * smoothing;
-          smoothedNoteRef.current = smoothedNote;
-          lastSignalAtRef.current = timestamp;
-
-          const spread = standardDeviation(
-            noteWindow.map((note) => (note - medianNote) * 100),
-          );
-          setPolyphonicDetections([]);
-          setDetection({
-            confidence: result.confidence,
-            frequency: 440 * 2 ** ((smoothedNote - 69) / 12),
-            measuredAt: timestamp,
-            rms: result.rms,
-            stability: Math.max(0, 100 - spread * 5.2),
-          });
-          return true;
+          return publishPrecisionMeasurement(result, timestamp);
         } else if (timestamp - lastSignalAtRef.current > 360) {
           noteWindowRef.current = [];
           smoothedNoteRef.current = null;
           setDetection(null);
         }
         return false;
+      }
+
+      function publishPrecisionMeasurement(
+        result: { confidence: number; frequency: number; rms: number },
+        timestamp: number,
+      ) {
+        const rawNote = 69 + 12 * Math.log2(result.frequency / 440);
+        const noteWindow = [...noteWindowRef.current, rawNote].slice(-NOTE_WINDOW_SIZE);
+        noteWindowRef.current = noteWindow;
+        const medianNote = median(noteWindow);
+        const previousNote = smoothedNoteRef.current;
+        const smoothing = result.confidence > 0.88 ? 0.46 : 0.3;
+        const smoothedNote = previousNote === null
+          ? medianNote
+          : previousNote + (medianNote - previousNote) * smoothing;
+        smoothedNoteRef.current = smoothedNote;
+        lastSignalAtRef.current = timestamp;
+
+        const spread = standardDeviation(
+          noteWindow.map((note) => (note - medianNote) * 100),
+        );
+        setPolyphonicDetections([]);
+        setDetection({
+          confidence: result.confidence,
+          frequency: 440 * 2 ** ((smoothedNote - 69) / 12),
+          measuredAt: timestamp,
+          rms: result.rms,
+          stability: Math.max(0, 100 - spread * 5.2),
+        });
+        return true;
       }
 
       function analyseFrame(timestamp: number) {
@@ -274,19 +285,33 @@ export function useTuner({
             let precisionWasAnalyzed = false;
             let resolvedMode: ActiveTunerMode = 'polyphonic';
             if (currentOptions.mode === 'auto') {
-              if (detectedStringCount >= 2) {
-                resolvedMode = resolveAutomaticMode('polyphonic');
-              } else {
+              const dominantPitch = selectDominantPolyphonicPitch(measurements);
+              let hasDominantNote = Boolean(dominantPitch);
+              const requiredPolyphonicStringCount = Math.min(
+                4,
+                currentOptions.targetFrequencies.length,
+              );
+              if (detectedStringCount < requiredPolyphonicStringCount) {
                 precisionWasAnalyzed = true;
-                const hasSingleNote = analysePrecisionFrame(
-                  samples,
-                  timestamp,
-                  currentOptions,
-                );
-                resolvedMode = hasSingleNote
-                  ? resolveAutomaticMode('precision')
-                  : activeModeRef.current;
+                hasDominantNote = detectedStringCount > 1 && dominantPitch
+                  ? publishPrecisionMeasurement(
+                      {
+                        confidence: dominantPitch.confidence,
+                        frequency: dominantPitch.frequency,
+                        rms: calculateRms(samples),
+                      },
+                      timestamp,
+                    )
+                  : analysePrecisionFrame(samples, timestamp, currentOptions);
               }
+              const automaticCandidate = getAutomaticModeCandidate(
+                detectedStringCount,
+                currentOptions.targetFrequencies.length,
+                hasDominantNote,
+              );
+              resolvedMode = automaticCandidate
+                ? resolveAutomaticMode(automaticCandidate)
+                : activeModeRef.current;
             }
 
             if (resolvedMode === 'polyphonic') {
@@ -360,4 +385,9 @@ function standardDeviation(values: number[]) {
   const average = values.reduce((sum, value) => sum + value, 0) / values.length;
   const variance = values.reduce((sum, value) => sum + (value - average) ** 2, 0) / values.length;
   return Math.sqrt(variance);
+}
+
+function calculateRms(samples: Float32Array) {
+  const power = samples.reduce((sum, sample) => sum + sample * sample, 0);
+  return Math.sqrt(power / samples.length);
 }

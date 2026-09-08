@@ -12,10 +12,15 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
+const assetPrefix = process.env.ACCORDA_STATIC_EXPORT === 'true' ? '/accorda' : '';
+
 export const metadata: Metadata = {
   title: 'Accorda — Accordatore cromatico e polifonico',
   description:
     'Accordatore online cromatico e polifonico per chitarra, basso, ukulele, violino e mandolino. Analisi audio privata, direttamente nel browser.',
+  icons: {
+    icon: `${assetPrefix}/favicon.svg`,
+  },
 };
 
 export default function RootLayout({

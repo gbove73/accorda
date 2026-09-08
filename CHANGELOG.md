@@ -26,6 +26,8 @@ progetto adotta [Semantic Versioning](https://semver.org/lang/it/).
   soppressione delle collisioni armoniche tra corde.
 - Test deterministici su pennate sintetiche a sei corde, inclusi scostamenti diversi,
   rumore, inviluppo naturale e controllo dei falsi positivi su corde assenti.
+- Distribuzione CI/CD su Contabo con build verificata, rilascio statico atomico e
+  pubblicazione sotto `gianlucabove.it/accorda`.
 
 ### Changed
 
@@ -33,7 +35,8 @@ progetto adotta [Semantic Versioning](https://semver.org/lang/it/).
   tolleranza pratica di ±2 cent e rosso per le corde che richiedono correzione.
 - Rinomina il progetto e l'intera interfaccia da Aurelia Tuner ad Accorda.
 - Introduce una modalità Auto che passa con isteresi dalla griglia polifonica all'ago
-  di precisione in base al numero di corde rilevate nello stesso segnale.
+  di precisione: con meno di quattro corde segue la nota predominante e mostra la
+  griglia da quattro corde simultanee.
 - Sostituisce la precedente palette verde-blu con un'identità originale basata su
   melanzana, corallo, viola e turchese, preservando il significato degli stati.
 - Restringe a ±1 cent la zona considerata intonata e il completamento automatico
@@ -41,6 +44,7 @@ progetto adotta [Semantic Versioning](https://semver.org/lang/it/).
 - Rafforza i test numerici su tutto il registro della chitarra, includendo segnali
   armonici, rumore deterministico e scostamenti frazionali dalla nota di riferimento.
 - Estende la configurazione WebMCP alla scelta tra modalità di precisione e polifonica.
+- Aggiunge nell'intestazione il collegamento per tornare alla home dell'autore.
 
 ### Fixed
 

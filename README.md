@@ -6,6 +6,9 @@ operano sul dispositivo dell'utente.
 
 [Prova Accorda online](https://accorda.gianlucab.chatgpt.site/)
 
+La versione pubblica sul sito dell'autore è disponibile su
+[gianlucabove.it/accorda](https://gianlucabove.it/accorda/).
+
 ## Funzioni principali
 
 - rilevamento ibrido YIN con verifica armonica e correzione degli errori di ottava;
@@ -15,8 +18,8 @@ operano sul dispositivo dell'utente.
 - modalità polifonica per controllare tutte le corde aperte con una sola pennata,
   affiancata alla modalità di precisione monofonica e con una pratica zona verde
   entro ±2 cent;
-- passaggio grafico automatico tra griglia polifonica e ago quando il segnale cambia
-  da più corde a una sola, con isteresi contro le commutazioni instabili;
+- passaggio grafico automatico alla griglia da quattro corde simultanee; con una,
+  due o tre corde l'ago segue la nota predominante, con isteresi;
 - analisi multi-pitch FFT a 32.768 campioni, consenso fra parziali e riconoscimento
   delle sovrapposizioni armoniche fra corde;
 - indicatore a lancetta, stroboscopio e cronologia dell'intonazione;
@@ -45,6 +48,13 @@ npm run typecheck
 npm run lint
 npm run build
 ```
+
+## Distribuzione
+
+Ogni aggiornamento del branch `main` viene verificato dalla CI. Il repository
+infrastrutturale di `gianlucabove.it`, che conserva i segreti Contabo, rileva quindi
+la nuova revisione e la pubblica come rilascio statico atomico sotto `/accorda`.
+Il build dedicato imposta il prefisso degli asset senza modificare l'output Sites.
 
 ## Licenza
 
