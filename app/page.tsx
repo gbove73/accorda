@@ -40,7 +40,9 @@ import {
 
 const DIAL_TICKS = Array.from({ length: 21 }, (_, index) => index);
 const HISTORY_CAPACITY = 56;
-const IN_TUNE_TOLERANCE_CENTS = 1;
+const PRECISION_TOLERANCE_CENTS = 1;
+const POLYPHONIC_TOLERANCE_CENTS = 2;
+const POLYPHONIC_LED_CENTS = [20, 15, 10, 5, 0, -5, -10, -15, -20];
 
 type HoldState = {
   index: number;
@@ -142,13 +144,13 @@ export default function Home() {
   const detectedCents = displayedNote?.cents;
   const isInTune = Boolean(
     detection &&
-      Math.abs(cents) <= IN_TUNE_TOLERANCE_CENTS &&
+      Math.abs(cents) <= PRECISION_TOLERANCE_CENTS &&
       detection.stability >= 64,
   );
   const hasPolyphonicSignal = polyphonicDetections.some(Boolean);
   const polyphonicTunedCount = preset.strings.reduce((count, _, index) => {
     const result = polyphonicDetections[index];
-    return result && Math.abs(result.cents) <= IN_TUNE_TOLERANCE_CENTS
+    return result && Math.abs(result.cents) <= POLYPHONIC_TOLERANCE_CENTS
       ? count + 1
       : count;
   }, 0);
@@ -191,7 +193,7 @@ export default function Home() {
     }
 
     const qualifies =
-      Math.abs(assistedTarget.cents) <= IN_TUNE_TOLERANCE_CENTS &&
+      Math.abs(assistedTarget.cents) <= PRECISION_TOLERANCE_CENTS &&
       detection.confidence >= 0.72 &&
       detection.stability >= 64;
     if (!qualifies) {
@@ -315,7 +317,7 @@ export default function Home() {
                 const isComplete = displayMode === 'polyphonic'
                   ? Boolean(
                       polyphonicResult &&
-                        Math.abs(polyphonicResult.cents) <= IN_TUNE_TOLERANCE_CENTS,
+                        Math.abs(polyphonicResult.cents) <= POLYPHONIC_TOLERANCE_CENTS,
                     )
                   : tunedStrings.has(index);
                 return (
@@ -623,41 +625,47 @@ function PolyphonicDisplay({
   return (
     <section className="polyphonic-display" aria-live="polite" aria-atomic="true">
       <div className="polyphonic-heading">
-        <p>Analisi simultanea</p>
+        <p>Accordatura polifonica · fuoco ±2 cent</p>
         <h2>{heading}</h2>
         <span>{isInTune ? 'Pronta per suonare' : instruction}</span>
       </div>
 
-      <div className="polyphonic-strings" aria-label="Intonazione di tutte le corde">
-        {strings.map((string, index) => {
-          const detection = detections[index];
-          const tone = getPolyphonicTone(detection?.cents);
-          const markerPosition = detection
-            ? 50 + Math.max(-25, Math.min(25, detection.cents)) * 2
-            : 50;
-          const status = getPolyphonicStatus(detection?.cents);
+      <div className="polyphonic-console">
+        <div className="polyphonic-screen">
+          <span className="polyphonic-focus-line" aria-hidden="true" />
+          <div className="polyphonic-strings" aria-label="Intonazione di tutte le corde">
+            {strings.map((string, index) => {
+              const detection = detections[index];
+              const tone = getPolyphonicTone(detection?.cents);
+              const activeLedIndex = detection
+                ? getClosestPolyphonicLedIndex(detection.cents)
+                : -1;
+              const status = getPolyphonicStatus(detection?.cents);
 
-          return (
-            <article
-              className={`polyphonic-string tone-${tone}`}
-              key={`${string.note}-${index}`}
-              aria-label={`${string.note}: ${status}`}
-            >
-              <span className="polyphonic-string-number">{index + 1}</span>
-              <strong>{string.note}</strong>
-              <div className="polyphonic-meter" aria-hidden="true">
-                <span className="polyphonic-center-zone" />
-                {detection && (
-                  <i style={{ left: `${markerPosition}%` }} />
-                )}
-              </div>
-              <output>
-                {detection ? `${formatSigned(detection.cents)} cent` : '—'}
-              </output>
-              <small>{status}</small>
-            </article>
-          );
-        })}
+              return (
+                <article
+                  className={`polyphonic-string tone-${tone}`}
+                  key={`${string.note}-${index}`}
+                  aria-label={`${string.note}: ${status}`}
+                >
+                  <div className="polyphonic-led-column" aria-hidden="true">
+                    {POLYPHONIC_LED_CENTS.map((ledCents, ledIndex) => (
+                      <span
+                        className={`polyphonic-led-segment${ledIndex === activeLedIndex ? ' is-active' : ''}${ledCents === 0 ? ' is-focus' : ''}`}
+                        key={ledCents}
+                      />
+                    ))}
+                  </div>
+                  <strong>{string.note}</strong>
+                  <output>
+                    {detection ? `${formatSigned(detection.cents)} c` : '—'}
+                  </output>
+                  <small>{status}</small>
+                </article>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       <p className="polyphonic-tip">
@@ -669,14 +677,25 @@ function PolyphonicDisplay({
 
 function getPolyphonicTone(cents: number | undefined) {
   if (cents === undefined) return 'idle' as const;
-  if (Math.abs(cents) <= IN_TUNE_TOLERANCE_CENTS) return 'perfect' as const;
+  if (Math.abs(cents) <= POLYPHONIC_TOLERANCE_CENTS) return 'perfect' as const;
   return cents < 0 ? 'flat' as const : 'sharp' as const;
 }
 
 function getPolyphonicStatus(cents: number | undefined) {
   if (cents === undefined) return 'Non rilevata';
-  if (Math.abs(cents) <= IN_TUNE_TOLERANCE_CENTS) return 'Centrata';
+  if (Math.abs(cents) <= POLYPHONIC_TOLERANCE_CENTS) return 'Centrata';
   return cents < 0 ? 'Bassa · tendi' : 'Alta · allenta';
+}
+
+/**
+ * Associa lo scostamento alla coppia di LED più vicina senza ridurre la precisione
+ * della misura mostrata. La saturazione agli estremi evita salti fuori dal display.
+ */
+function getClosestPolyphonicLedIndex(cents: number) {
+  return POLYPHONIC_LED_CENTS.reduce((closestIndex, ledCents, index) => {
+    const currentDistance = Math.abs(cents - POLYPHONIC_LED_CENTS[closestIndex]);
+    return Math.abs(cents - ledCents) < currentDistance ? index : closestIndex;
+  }, 0);
 }
 
 function Metric({

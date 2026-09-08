@@ -226,27 +226,27 @@ footer {
 .history-card polyline { fill: none; stroke: var(--brand); stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
 
 .polyphonic-display { align-items: center; display: flex; flex: 1; flex-direction: column; justify-content: center; padding: 22px 0 8px; position: relative; width: 100%; z-index: 1; }
-.polyphonic-heading { margin-bottom: 26px; text-align: center; }
-.polyphonic-heading p { color: var(--brand); font-family: var(--font-geist-mono), monospace; font-size: 11px; font-weight: 650; letter-spacing: .12em; margin: 0 0 8px; text-transform: uppercase; }
+.polyphonic-heading { margin-bottom: 22px; text-align: center; }
+.polyphonic-heading p { color: #79ff6b; font-family: var(--font-geist-mono), monospace; font-size: 11px; font-weight: 650; letter-spacing: .12em; margin: 0 0 8px; text-transform: uppercase; }
 .polyphonic-heading h2 { font-size: clamp(1.55rem, 3vw, 2.35rem); letter-spacing: -.04em; line-height: 1.05; margin: 0; }
 .polyphonic-heading span { color: #8793a6; display: block; font-size: 13px; line-height: 1.5; margin-top: 9px; }
-.polyphonic-strings { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); max-width: 680px; width: 100%; }
-.polyphonic-string { background: rgba(18,13,25,.62); border: 1px solid rgba(244,231,255,.1); border-radius: 13px; min-width: 0; padding: 10px 8px 12px; position: relative; text-align: center; transition: border-color 180ms ease, background 180ms ease, transform 180ms ease; }
-.polyphonic-string-number { color: #526078; font-family: var(--font-geist-mono), monospace; font-size: 10px; left: 8px; position: absolute; top: 7px; }
-.polyphonic-string > strong { display: block; font-family: var(--font-geist-mono), monospace; font-size: 25px; letter-spacing: -.05em; margin-top: 5px; }
-.polyphonic-string output { display: block; font-family: var(--font-geist-mono), monospace; font-size: 11px; margin-top: 9px; }
-.polyphonic-string > small { color: #748096; display: block; font-size: 10px; line-height: 1.25; margin-top: 4px; min-height: 25px; }
-.polyphonic-meter { background: linear-gradient(90deg, rgba(167,139,250,.2), rgba(255,255,255,.06) 43%, rgba(94,234,212,.14) 48% 52%, rgba(255,255,255,.06) 57%, rgba(255,122,110,.2)); border-radius: 99px; height: 48px; margin-top: 8px; overflow: hidden; position: relative; }
-.polyphonic-meter::after { background: rgba(255,255,255,.13); content: ''; height: 1px; inset: 50% 5% auto; position: absolute; }
-.polyphonic-center-zone { background: rgba(94,234,212,.3); height: 100%; left: 48%; position: absolute; width: 4%; }
-.polyphonic-meter i { background: #e9edf4; border-radius: 99px; box-shadow: 0 0 10px rgba(255,255,255,.28); height: 28px; position: absolute; top: 10px; transform: translateX(-50%); transition: left 120ms ease; width: 3px; z-index: 1; }
-.polyphonic-string.tone-flat { border-color: rgba(167,139,250,.48); }
-.polyphonic-string.tone-flat output, .polyphonic-string.tone-flat > strong { color: var(--flat); }
-.polyphonic-string.tone-sharp { border-color: rgba(255,122,110,.48); }
-.polyphonic-string.tone-sharp output, .polyphonic-string.tone-sharp > strong { color: var(--sharp); }
-.polyphonic-string.tone-perfect { background: rgba(94,234,212,.09); border-color: rgba(94,234,212,.6); transform: translateY(-3px); }
-.polyphonic-string.tone-perfect output, .polyphonic-string.tone-perfect > strong, .polyphonic-string.tone-perfect > small { color: var(--tuned); }
-.polyphonic-string.tone-perfect .polyphonic-meter i { background: var(--tuned-bright); box-shadow: 0 0 14px rgba(94,234,212,.72); }
+.polyphonic-console { background: linear-gradient(145deg, #17131c, #09080b); border: 1px solid rgba(255,255,255,.13); border-radius: 24px; box-shadow: inset 0 1px rgba(255,255,255,.08), inset 0 -12px 26px rgba(0,0,0,.38), 0 24px 50px rgba(0,0,0,.32); max-width: 700px; padding: 12px; width: 100%; }
+.polyphonic-screen { background: radial-gradient(circle at 50% 45%, rgba(47,255,73,.035), transparent 58%), #020403; border: 1px solid rgba(121,255,107,.12); border-radius: 15px; box-shadow: inset 0 0 38px rgba(0,0,0,.95); overflow: hidden; padding: 19px 15px 15px; position: relative; }
+.polyphonic-focus-line { background: linear-gradient(90deg, transparent, rgba(121,255,107,.12) 12% 88%, transparent); height: 1px; left: 14px; position: absolute; right: 14px; top: 80px; }
+.polyphonic-strings { display: grid; gap: 5px; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); margin: 0 auto; max-width: 650px; position: relative; width: 100%; }
+.polyphonic-string { min-width: 0; padding: 0 4px; position: relative; text-align: center; }
+.polyphonic-led-column { display: grid; gap: 4px; grid-template-rows: repeat(9, 10px); height: 122px; place-items: center; }
+.polyphonic-led-segment { display: flex; gap: 4px; opacity: .18; transition: filter 100ms ease, opacity 100ms ease, transform 100ms ease; }
+.polyphonic-led-segment::before, .polyphonic-led-segment::after { background: #ff394f; border-radius: 2px; box-shadow: 0 0 4px rgba(255,57,79,.35); content: ''; height: 7px; width: 12px; }
+.polyphonic-led-segment.is-focus::before, .polyphonic-led-segment.is-focus::after { background: #55ff48; box-shadow: 0 0 5px rgba(85,255,72,.45); }
+.tone-flat .polyphonic-led-segment.is-active, .tone-sharp .polyphonic-led-segment.is-active { filter: brightness(1.2); opacity: 1; transform: scale(1.12); }
+.tone-perfect .polyphonic-led-segment.is-focus { filter: brightness(1.3); opacity: 1; transform: scale(1.15); }
+.tone-perfect .polyphonic-led-segment.is-focus::before, .tone-perfect .polyphonic-led-segment.is-focus::after { box-shadow: 0 0 7px #55ff48, 0 0 16px rgba(85,255,72,.7); }
+.polyphonic-string > strong { color: #aeb8b1; display: block; font-family: var(--font-geist-mono), monospace; font-size: 22px; letter-spacing: -.05em; margin-top: 2px; }
+.polyphonic-string output { color: #7b8580; display: block; font-family: var(--font-geist-mono), monospace; font-size: 11px; margin-top: 4px; }
+.polyphonic-string > small { color: #5f6963; display: block; font-size: 10px; line-height: 1.25; margin-top: 3px; min-height: 25px; }
+.polyphonic-string.tone-flat output, .polyphonic-string.tone-flat > strong, .polyphonic-string.tone-flat > small, .polyphonic-string.tone-sharp output, .polyphonic-string.tone-sharp > strong, .polyphonic-string.tone-sharp > small { color: #ff6372; }
+.polyphonic-string.tone-perfect output, .polyphonic-string.tone-perfect > strong, .polyphonic-string.tone-perfect > small { color: #79ff6b; text-shadow: 0 0 12px rgba(85,255,72,.3); }
 .polyphonic-tip { color: #657185; font-size: 11px; line-height: 1.5; margin: 18px 0 0; text-align: center; }
 
 .listen-button { background: var(--brand) !important; border-radius: 13px !important; color: #23131d !important; font-size: 14px !important; font-weight: 730 !important; height: 50px !important; margin-top: 18px; padding: 0 14px 0 18px !important; position: relative; width: min(100%, 330px); }

@@ -2,6 +2,17 @@
   "name": "accorda",
   "version": "0.1.0",
   "private": true,
+  "description": "Accordatore cromatico e polifonico open source eseguito interamente nel browser.",
+  "license": "MIT",
+  "author": "Gianluca Bove <45562226+gbove73@users.noreply.github.com>",
+  "homepage": "https://accorda.gianlucab.chatgpt.site/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gbove73/accorda.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gbove73/accorda/issues"
+  },
   "engines": {
     "node": ">=22.13.0"
   },

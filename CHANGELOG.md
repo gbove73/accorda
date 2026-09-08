@@ -8,6 +8,8 @@ progetto adotta [Semantic Versioning](https://semver.org/lang/it/).
 
 ### Added
 
+- Pubblicazione del codice sorgente con licenza open source MIT, metadati GitHub e
+  collegamento alla demo online.
 - Prima versione di Accorda con rilevamento cromatico ibrido YIN, verifica
   armonica, interpolazione sub-campione e stabilizzazione in dominio musicale.
 - Preset per chitarra, basso, ukulele, violino e mandolino, inclusi Drop D, Drop C,
@@ -19,7 +21,7 @@ progetto adotta [Semantic Versioning](https://semver.org/lang/it/).
 - Strumenti WebMCP per leggere e impostare la configurazione attraverso gli stessi
   controlli dell'interfaccia, senza automatizzare il consenso al microfono.
 - Modalità polifonica capace di analizzare con una pennata tutte le corde del preset,
-  mostrando per ciascuna deviazione, direzione della correzione e stato entro ±1 cent.
+  mostrando per ciascuna deviazione, direzione della correzione e stato di accordatura.
 - Rilevatore multi-pitch FFT ad alta risoluzione con consenso fra più parziali e
   soppressione delle collisioni armoniche tra corde.
 - Test deterministici su pennate sintetiche a sei corde, inclusi scostamenti diversi,
@@ -27,6 +29,8 @@ progetto adotta [Semantic Versioning](https://semver.org/lang/it/).
 
 ### Changed
 
+- Rende la vista polifonica più immediata con un display a matrice: verde entro una
+  tolleranza pratica di ±2 cent e rosso per le corde che richiedono correzione.
 - Rinomina il progetto e l'intera interfaccia da Aurelia Tuner ad Accorda.
 - Introduce una modalità Auto che passa con isteresi dalla griglia polifonica all'ago
   di precisione in base al numero di corde rilevate nello stesso segnale.

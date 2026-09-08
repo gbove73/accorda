@@ -4,14 +4,17 @@ Accordatore cromatico professionale eseguito interamente nel browser. Il microfo
 non viene registrato né inviato a un server: Web Audio API e rilevamento della nota
 operano sul dispositivo dell'utente.
 
+[Prova Accorda online](https://accorda.gianlucab.chatgpt.site/)
+
 ## Funzioni principali
 
 - rilevamento ibrido YIN con verifica armonica e correzione degli errori di ottava;
 - interpolazione sub-campione, filtro mediano ed EMA in dominio musicale;
-- zona di accordatura centrata a ±1 cent, con validazione numerica deterministica
-  sull'intero registro della chitarra e su scostamenti frazionali;
+- zona di precisione monofonica centrata a ±1 cent, con validazione numerica
+  deterministica sull'intero registro della chitarra e su scostamenti frazionali;
 - modalità polifonica per controllare tutte le corde aperte con una sola pennata,
-  affiancata alla modalità di precisione monofonica;
+  affiancata alla modalità di precisione monofonica e con una pratica zona verde
+  entro ±2 cent;
 - passaggio grafico automatico tra griglia polifonica e ago quando il segnale cambia
   da più corde a una sola, con isteresi contro le commutazioni instabili;
 - analisi multi-pitch FFT a 32.768 campioni, consenso fra parziali e riconoscimento
@@ -42,3 +45,8 @@ npm run typecheck
 npm run lint
 npm run build
 ```
+
+## Licenza
+
+Accorda è software open source distribuito con licenza [MIT](LICENSE). Puoi usarlo,
+studiarlo, modificarlo e distribuirlo, mantenendo l'avviso di copyright e la licenza.
