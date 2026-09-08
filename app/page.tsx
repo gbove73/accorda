@@ -23,13 +23,18 @@ import {
 } from '@/components/ui/native-select';
 import { Progress } from '@/components/ui/progress';
 import { Slider } from '@/components/ui/slider';
-import { useTuner } from '@/hooks/use-tuner';
+import {
+  type PolyphonicMeasurement,
+  type TunerMode,
+  useTuner,
+} from '@/hooks/use-tuner';
 import { useTunerWebMcp } from '@/hooks/use-tuner-webmcp';
 import {
   frequencyToNote,
   getClosestString,
   getPresetFrequencyRange,
   INSTRUMENT_PRESETS,
+  type InstrumentString,
   midiToFrequency,
 } from '@/lib/music';
 
@@ -50,24 +55,10 @@ export default function Home() {
   const [presetId, setPresetId] = useState('guitar-standard');
   const [referencePitch, setReferencePitch] = useState(440);
   const [sensitivity, setSensitivity] = useState(72);
+  const [mode, setMode] = useState<TunerMode>('auto');
   const [tunedStrings, setTunedStrings] = useState<Set<number>>(new Set());
   const [history, setHistory] = useState<number[]>([]);
   const holdStateRef = useRef<HoldState | null>(null);
-  const handlePresetChange = useCallback((nextPresetId: string) => {
-    setPresetId(nextPresetId);
-    setTunedStrings(new Set());
-    setHistory([]);
-    holdStateRef.current = null;
-  }, []);
-
-  useTunerWebMcp({
-    presetId,
-    referencePitch,
-    sensitivity,
-    setPresetId: handlePresetChange,
-    setReferencePitch,
-    setSensitivity,
-  });
 
   const preset = useMemo(
     () =>
@@ -79,10 +70,54 @@ export default function Home() {
     () => getPresetFrequencyRange(preset),
     [preset],
   );
-  const { detection, error, isListening, start, stop } = useTuner({
+  const targetFrequencies = useMemo(
+    () => preset.strings.map((string) => midiToFrequency(string.midi, referencePitch)),
+    [preset, referencePitch],
+  );
+  const {
+    activeMode,
+    detection,
+    error,
+    isListening,
+    polyphonicDetections,
+    resetMeasurements,
+    start,
+    stop,
+  } = useTuner({
     maxFrequency: frequencyRange.max,
     minFrequency: frequencyRange.min,
+    mode,
     sensitivity,
+    targetFrequencies,
+  });
+  const handlePresetChange = useCallback((nextPresetId: string) => {
+    const nextPreset = INSTRUMENT_PRESETS.find((candidate) => candidate.id === nextPresetId);
+    setPresetId(nextPresetId);
+    if ((!nextPreset || nextPreset.strings.length < 2) && mode === 'polyphonic') {
+      setMode('precision');
+    }
+    setTunedStrings(new Set());
+    setHistory([]);
+    holdStateRef.current = null;
+    resetMeasurements();
+  }, [mode, resetMeasurements]);
+  const handleModeChange = useCallback((nextMode: TunerMode) => {
+    if (nextMode === 'polyphonic' && preset.strings.length < 2) return;
+    resetMeasurements();
+    setHistory([]);
+    holdStateRef.current = null;
+    setMode(nextMode);
+  }, [preset.strings.length, resetMeasurements]);
+
+  useTunerWebMcp({
+    mode,
+    presetId,
+    referencePitch,
+    sensitivity,
+    setMode: handleModeChange,
+    setPresetId: handlePresetChange,
+    setReferencePitch,
+    setSensitivity,
   });
 
   const chromaticNote = detection
@@ -110,6 +145,20 @@ export default function Home() {
       Math.abs(cents) <= IN_TUNE_TOLERANCE_CENTS &&
       detection.stability >= 64,
   );
+  const hasPolyphonicSignal = polyphonicDetections.some(Boolean);
+  const polyphonicTunedCount = preset.strings.reduce((count, _, index) => {
+    const result = polyphonicDetections[index];
+    return result && Math.abs(result.cents) <= IN_TUNE_TOLERANCE_CENTS
+      ? count + 1
+      : count;
+  }, 0);
+  const hasCompletePolyphonicSnapshot =
+    preset.strings.length > 0 &&
+    polyphonicDetections.filter(Boolean).length === preset.strings.length;
+  const isPolyphonicInTune =
+    hasCompletePolyphonicSnapshot && polyphonicTunedCount === preset.strings.length;
+  const displayMode = mode === 'auto' ? activeMode : mode;
+  const hasSignal = displayMode === 'polyphonic' ? hasPolyphonicSignal : Boolean(detection);
   const dialAngle = Math.max(-50, Math.min(50, cents)) * 1.02;
   const historyPoints = history
     .map((value, index) => {
@@ -192,17 +241,23 @@ export default function Home() {
 
   const status = getTuningStatus({ cents, hasSignal: Boolean(detection), isInTune });
   const selectedTone = assistedTarget?.string ?? preset.strings[0] ?? null;
+  const completedStringCount = displayMode === 'polyphonic'
+    ? polyphonicTunedCount
+    : tunedStrings.size;
+  const stageTone = displayMode === 'polyphonic'
+    ? (isPolyphonicInTune ? 'perfect' : 'idle')
+    : status.tone;
 
   return (
     <main className="app-shell">
       <header className="site-header">
-        <a className="brand" href="#top" aria-label="Aurelia Tuner, torna all'inizio">
+        <a className="brand" href="#top" aria-label="Accorda, torna all'inizio">
           <span className="brand-mark" aria-hidden="true">
             <AudioLines />
           </span>
           <span>
-            <strong>AURELIA</strong>
-            <small>precision tuner</small>
+            <strong>ACCORDA</strong>
+            <small>polyphonic tuner</small>
           </span>
         </a>
         <div className="privacy-chip">
@@ -217,9 +272,9 @@ export default function Home() {
           <h1>Accorda il suono, non lo schermo.</h1>
         </div>
         <p>
-          Un accordatore cromatico con obiettivo ±1 cent su un segnale stabile:
-          distingue la fondamentale dalle armoniche e stabilizza la lettura senza
-          nascondere il movimento reale della nota.
+          Controlla tutte le corde con una pennata oppure rifinisci una nota alla volta
+          entro ±1 cent. L’analisi separa fondamentali e armoniche direttamente sul
+          tuo dispositivo.
         </p>
       </section>
 
@@ -253,8 +308,16 @@ export default function Home() {
             {preset.strings.length > 0 ? (
               preset.strings.map((string, index) => {
                 const frequency = midiToFrequency(string.midi, referencePitch);
-                const isActive = assistedTarget?.index === index;
-                const isComplete = tunedStrings.has(index);
+                const polyphonicResult = polyphonicDetections[index];
+                const isActive = displayMode === 'polyphonic'
+                  ? Boolean(polyphonicResult)
+                  : assistedTarget?.index === index;
+                const isComplete = displayMode === 'polyphonic'
+                  ? Boolean(
+                      polyphonicResult &&
+                        Math.abs(polyphonicResult.cents) <= IN_TUNE_TOLERANCE_CENTS,
+                    )
+                  : tunedStrings.has(index);
                 return (
                   <button
                     className={`string-row${isActive ? ' is-active' : ''}${isComplete ? ' is-complete' : ''}`}
@@ -267,7 +330,11 @@ export default function Home() {
                       {isComplete ? <Check /> : index + 1}
                     </span>
                     <strong>{string.note}</strong>
-                    <span>{frequency.toFixed(2)} Hz</span>
+                    <span>
+                      {displayMode === 'polyphonic' && polyphonicResult
+                        ? `${formatSigned(polyphonicResult.cents)} c`
+                        : `${frequency.toFixed(2)} Hz`}
+                    </span>
                     <Volume2 aria-hidden="true" />
                   </button>
                 );
@@ -284,78 +351,121 @@ export default function Home() {
             <div className="tuning-progress">
               <div>
                 <span>Sessione</span>
-                <strong>{tunedStrings.size}/{preset.strings.length} corde</strong>
+                <strong>{completedStringCount}/{preset.strings.length} corde</strong>
               </div>
-              <Progress value={(tunedStrings.size / preset.strings.length) * 100} />
-              <button type="button" onClick={() => setTunedStrings(new Set())}>
+              <Progress value={(completedStringCount / preset.strings.length) * 100} />
+              <button
+                type="button"
+                onClick={() => {
+                  setTunedStrings(new Set());
+                  resetMeasurements();
+                }}
+              >
                 <RotateCcw aria-hidden="true" /> Azzera controllo
               </button>
             </div>
           )}
         </aside>
 
-        <article className={`tuner-stage tone-${status.tone}`}>
+        <article className={`tuner-stage tone-${stageTone}`}>
           <div className="stage-topline">
             <div className="signal-state">
               <span className={`signal-dot${isListening ? ' is-live' : ''}`} />
-              {isListening ? (detection ? 'Segnale acquisito' : 'In ascolto…') : 'Microfono inattivo'}
+              {isListening ? (hasSignal ? 'Segnale acquisito' : 'In ascolto…') : 'Microfono inattivo'}
             </div>
             <button type="button" className="fullscreen-button" onClick={toggleFullscreen}>
               <Expand aria-hidden="true" /> Schermo intero
             </button>
           </div>
 
-          <div className="note-readout" aria-live="polite" aria-atomic="true">
-            <p>{status.label}</p>
-            <div className="note-line">
-              <span>{displayedNote?.label ?? '—'}</span>
-              {displayedNote && <sup>{displayedNote.octave}</sup>}
-            </div>
-            <strong>{detection ? `${formatSigned(cents)} cent` : 'Suona una nota pulita e sostenuta'}</strong>
-          </div>
+          <fieldset className="mode-switch">
+            <legend className="sr-only">Modalità di accordatura</legend>
+            <button
+              className={mode === 'auto' ? 'is-selected' : ''}
+              type="button"
+              onClick={() => handleModeChange('auto')}
+            >
+              Auto
+            </button>
+            <button
+              className={mode === 'precision' ? 'is-selected' : ''}
+              type="button"
+              onClick={() => handleModeChange('precision')}
+            >
+              Ago · singola
+            </button>
+            <button
+              className={mode === 'polyphonic' ? 'is-selected' : ''}
+              type="button"
+              disabled={preset.strings.length < 2}
+              onClick={() => handleModeChange('polyphonic')}
+            >
+              Poli · pennata
+            </button>
+          </fieldset>
 
-          <div className="dial" aria-label={`Deviazione ${formatSigned(cents)} cent`}>
-            <div className="dial-aura" />
-            <div className="dial-ticks" aria-hidden="true">
-              {DIAL_TICKS.map((tick) => (
-                <i key={tick} style={{ transform: `rotate(${-51 + tick * 5.1}deg)` }} />
-              ))}
-            </div>
-            <span className="dial-zone" aria-hidden="true" />
-            <span
-              className="dial-needle"
-              style={{ transform: `translateX(-50%) rotate(${dialAngle}deg)` }}
-              aria-hidden="true"
+          {displayMode === 'polyphonic' ? (
+            <PolyphonicDisplay
+              detections={polyphonicDetections}
+              isComplete={hasCompletePolyphonicSnapshot}
+              isInTune={isPolyphonicInTune}
+              strings={preset.strings}
             />
-            <span className="dial-pivot" aria-hidden="true" />
-            <span className="dial-label dial-flat">♭ BASSA</span>
-            <span className="dial-label dial-center">0</span>
-            <span className="dial-label dial-sharp">ALTA ♯</span>
-          </div>
+          ) : (
+            <>
+              <div className="note-readout" aria-live="polite" aria-atomic="true">
+                <p>{status.label}</p>
+                <div className="note-line">
+                  <span>{displayedNote?.label ?? '—'}</span>
+                  {displayedNote && <sup>{displayedNote.octave}</sup>}
+                </div>
+                <strong>{detection ? `${formatSigned(cents)} cent` : 'Suona una nota pulita e sostenuta'}</strong>
+              </div>
 
-          <div className="strobe" aria-hidden="true">
-            <div
-              className={`strobe-track${detection ? ' is-moving' : ''}`}
-              style={{
-                animationDirection: cents < 0 ? 'reverse' : 'normal',
-                animationDuration: `${Math.max(0.28, 2.2 - Math.min(50, Math.abs(cents)) * 0.035)}s`,
-                animationPlayState: isInTune || !detection ? 'paused' : 'running',
-              }}
-            />
-          </div>
+              <div className="dial" aria-label={`Deviazione ${formatSigned(cents)} cent`}>
+                <div className="dial-aura" />
+                <div className="dial-ticks" aria-hidden="true">
+                  {DIAL_TICKS.map((tick) => (
+                    <i key={tick} style={{ transform: `rotate(${-51 + tick * 5.1}deg)` }} />
+                  ))}
+                </div>
+                <span className="dial-zone" aria-hidden="true" />
+                <span
+                  className="dial-needle"
+                  style={{ transform: `translateX(-50%) rotate(${dialAngle}deg)` }}
+                  aria-hidden="true"
+                />
+                <span className="dial-pivot" aria-hidden="true" />
+                <span className="dial-label dial-flat">♭ BASSA</span>
+                <span className="dial-label dial-center">0</span>
+                <span className="dial-label dial-sharp">ALTA ♯</span>
+              </div>
 
-          <div className="history-card">
-            <div className="history-heading">
-              <span><Activity aria-hidden="true" /> Traccia intonazione</span>
-              <span>−50 <b>0</b> +50</span>
-            </div>
-            <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-              <line x1="0" y1="50" x2="100" y2="50" />
-              <line className="limit-line" x1="0" y1="46" x2="100" y2="46" />
-              <line className="limit-line" x1="0" y1="54" x2="100" y2="54" />
-              {historyPoints && <polyline points={historyPoints} />}
-            </svg>
-          </div>
+              <div className="strobe" aria-hidden="true">
+                <div
+                  className={`strobe-track${detection ? ' is-moving' : ''}`}
+                  style={{
+                    animationDirection: cents < 0 ? 'reverse' : 'normal',
+                    animationDuration: `${Math.max(0.28, 2.2 - Math.min(50, Math.abs(cents)) * 0.035)}s`,
+                    animationPlayState: isInTune || !detection ? 'paused' : 'running',
+                  }}
+                />
+              </div>
+
+              <div className="history-card">
+                <div className="history-heading">
+                  <span><Activity aria-hidden="true" /> Traccia intonazione</span>
+                  <span>−50 <b>0</b> +50</span>
+                </div>
+                <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                  <line x1="0" y1="50" x2="100" y2="50" />
+                  <line className="limit-line" x1="0" y1="46" x2="100" y2="46" />
+                  <line className="limit-line" x1="0" y1="54" x2="100" y2="54" />
+                  {historyPoints && <polyline points={historyPoints} />}
+                </svg>
+              </div>
+            </>
+          )}
 
           {error && <p className="error-message" role="alert">{error}</p>}
 
@@ -380,10 +490,21 @@ export default function Home() {
           </div>
 
           <div className="metrics-grid">
-            <Metric label="Frequenza" value={detection ? detection.frequency.toFixed(2) : '—'} unit="Hz" />
-            <Metric label="Deviazione" value={detection ? formatSigned(cents) : '—'} unit="cent" tone={status.tone} />
-            <Metric label="Affidabilità" value={detection ? Math.round(detection.confidence * 100).toString() : '—'} unit="%" />
-            <Metric label="Stabilità" value={detection ? Math.round(detection.stability).toString() : '—'} unit="%" />
+            {displayMode === 'polyphonic' ? (
+              <>
+                <Metric label="Corde rilevate" value={polyphonicDetections.filter(Boolean).length.toString()} unit={`/${preset.strings.length}`} />
+                <Metric label="Corde centrate" value={polyphonicTunedCount.toString()} unit={`/${preset.strings.length}`} tone={isPolyphonicInTune ? 'perfect' : 'idle'} />
+                <Metric label="Tolleranza" value="±1" unit="cent" />
+                <Metric label="Finestra" value="683" unit="ms" />
+              </>
+            ) : (
+              <>
+                <Metric label="Frequenza" value={detection ? detection.frequency.toFixed(2) : '—'} unit="Hz" />
+                <Metric label="Deviazione" value={detection ? formatSigned(cents) : '—'} unit="cent" tone={status.tone} />
+                <Metric label="Affidabilità" value={detection ? Math.round(detection.confidence * 100).toString() : '—'} unit="%" />
+                <Metric label="Stabilità" value={detection ? Math.round(detection.stability).toString() : '—'} unit="%" />
+              </>
+            )}
           </div>
 
           <div className="control-group">
@@ -436,10 +557,14 @@ export default function Home() {
           </div>
 
           <div className="algorithm-card">
-            <span><Sparkles aria-hidden="true" /> AURELIA HYBRID YIN</span>
+            <span>
+              <Sparkles aria-hidden="true" />
+              {displayMode === 'polyphonic' ? 'ACCORDA MULTI-PITCH FFT' : 'ACCORDA HYBRID YIN'}
+            </span>
             <p>
-              Periodicità normalizzata, verifica armonica, interpolazione sub-campione
-              e filtro adattivo in dominio cent.
+              {displayMode === 'polyphonic'
+                ? 'Spettro ad alta risoluzione, consenso tra parziali e soppressione delle interferenze tra corde.'
+                : 'Periodicità normalizzata, verifica armonica, interpolazione sub-campione e filtro adattivo in dominio cent.'}
             </p>
             <div>
               <span>Precisione obiettivo</span>
@@ -468,10 +593,90 @@ export default function Home() {
 
       <footer>
         <p><LockKeyhole aria-hidden="true" /> Nessuna registrazione, nessun upload, nessun account.</p>
-        <p>Aurelia Tuner · Web Audio API</p>
+        <p>Accorda · Web Audio API</p>
       </footer>
     </main>
   );
+}
+
+function PolyphonicDisplay({
+  detections,
+  isComplete,
+  isInTune,
+  strings,
+}: {
+  detections: Array<PolyphonicMeasurement | null>;
+  isComplete: boolean;
+  isInTune: boolean;
+  strings: InstrumentString[];
+}) {
+  const detectedCount = detections.filter(Boolean).length;
+  const heading = isInTune
+    ? 'Tutte le corde sono centrate'
+    : detectedCount > 0
+      ? `${detectedCount} ${detectedCount === 1 ? 'corda rilevata' : 'corde rilevate'}`
+      : 'Fai una pennata completa';
+  const instruction = isComplete
+    ? 'Correggi le corde evidenziate, poi suona di nuovo tutte le corde.'
+    : 'Suona insieme tutte le corde aperte, con una pennata uniforme.';
+
+  return (
+    <section className="polyphonic-display" aria-live="polite" aria-atomic="true">
+      <div className="polyphonic-heading">
+        <p>Analisi simultanea</p>
+        <h2>{heading}</h2>
+        <span>{isInTune ? 'Pronta per suonare' : instruction}</span>
+      </div>
+
+      <div className="polyphonic-strings" aria-label="Intonazione di tutte le corde">
+        {strings.map((string, index) => {
+          const detection = detections[index];
+          const tone = getPolyphonicTone(detection?.cents);
+          const markerPosition = detection
+            ? 50 + Math.max(-25, Math.min(25, detection.cents)) * 2
+            : 50;
+          const status = getPolyphonicStatus(detection?.cents);
+
+          return (
+            <article
+              className={`polyphonic-string tone-${tone}`}
+              key={`${string.note}-${index}`}
+              aria-label={`${string.note}: ${status}`}
+            >
+              <span className="polyphonic-string-number">{index + 1}</span>
+              <strong>{string.note}</strong>
+              <div className="polyphonic-meter" aria-hidden="true">
+                <span className="polyphonic-center-zone" />
+                {detection && (
+                  <i style={{ left: `${markerPosition}%` }} />
+                )}
+              </div>
+              <output>
+                {detection ? `${formatSigned(detection.cents)} cent` : '—'}
+              </output>
+              <small>{status}</small>
+            </article>
+          );
+        })}
+      </div>
+
+      <p className="polyphonic-tip">
+        In modalità Auto basta suonare una sola corda per tornare all’ago di precisione.
+      </p>
+    </section>
+  );
+}
+
+function getPolyphonicTone(cents: number | undefined) {
+  if (cents === undefined) return 'idle' as const;
+  if (Math.abs(cents) <= IN_TUNE_TOLERANCE_CENTS) return 'perfect' as const;
+  return cents < 0 ? 'flat' as const : 'sharp' as const;
+}
+
+function getPolyphonicStatus(cents: number | undefined) {
+  if (cents === undefined) return 'Non rilevata';
+  if (Math.abs(cents) <= IN_TUNE_TOLERANCE_CENTS) return 'Centrata';
+  return cents < 0 ? 'Bassa · tendi' : 'Alta · allenta';
 }
 
 function Metric({

@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Aurelia Tuner — Accordatore cromatico professionale',
+  title: 'Accorda — Accordatore cromatico e polifonico',
   description:
-    'Accordatore online preciso per chitarra, basso, ukulele, violino e mandolino. Analisi audio privata, direttamente nel browser.',
+    'Accordatore online cromatico e polifonico per chitarra, basso, ukulele, violino e mandolino. Analisi audio privata, direttamente nel browser.',
 };
 
 export default function RootLayout({

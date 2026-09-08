@@ -3,15 +3,18 @@
 import type { Dispatch, SetStateAction } from 'react';
 import { useEffect, useRef } from 'react';
 
+import type { TunerMode } from '@/hooks/use-tuner';
 import { INSTRUMENT_PRESETS } from '@/lib/music';
 
 type TunerSettings = {
+  mode: TunerMode;
   presetId: string;
   referencePitch: number;
   sensitivity: number;
 };
 
 type UseTunerWebMcpOptions = TunerSettings & {
+  setMode: (mode: TunerMode) => void;
   setPresetId: (presetId: string) => void;
   setReferencePitch: Dispatch<SetStateAction<number>>;
   setSensitivity: Dispatch<SetStateAction<number>>;
@@ -38,18 +41,20 @@ type ModelContext = {
  * resta escluso perché il suo consenso deve avvenire tramite un gesto esplicito.
  */
 export function useTunerWebMcp({
+  mode,
   presetId,
   referencePitch,
   sensitivity,
+  setMode,
   setPresetId,
   setReferencePitch,
   setSensitivity,
 }: UseTunerWebMcpOptions) {
-  const settingsRef = useRef<TunerSettings>({ presetId, referencePitch, sensitivity });
+  const settingsRef = useRef<TunerSettings>({ mode, presetId, referencePitch, sensitivity });
 
   useEffect(() => {
-    settingsRef.current = { presetId, referencePitch, sensitivity };
-  }, [presetId, referencePitch, sensitivity]);
+    settingsRef.current = { mode, presetId, referencePitch, sensitivity };
+  }, [mode, presetId, referencePitch, sensitivity]);
 
   useEffect(() => {
     const context = (document as Document & { modelContext?: ModelContext }).modelContext;
@@ -71,10 +76,11 @@ export function useTunerWebMcp({
       name: 'set_tuner_configuration',
       title: 'Configura accordatore',
       description:
-        'Imposta preset dello strumento, riferimento A4 e sensibilità, aggiornando gli stessi controlli visibili nell’accordatore.',
+        'Imposta modalità, preset dello strumento, riferimento A4 e sensibilità, aggiornando gli stessi controlli visibili nell’accordatore.',
       inputSchema: {
         type: 'object',
         properties: {
+          mode: { type: 'string', enum: ['auto', 'precision', 'polyphonic'] },
           presetId: { type: 'string', enum: supportedPresetIds },
           referencePitch: { type: 'integer', minimum: 415, maximum: 466 },
           sensitivity: { type: 'integer', minimum: 30, maximum: 100 },
@@ -85,6 +91,7 @@ export function useTunerWebMcp({
       async execute(input) {
         const next = validateConfiguration(input, settingsRef.current, supportedPresetIds);
         setPresetId(next.presetId);
+        setMode(next.mode);
         setReferencePitch(next.referencePitch);
         setSensitivity(next.sensitivity);
         settingsRef.current = next;
@@ -97,7 +104,7 @@ export function useTunerWebMcp({
       name: 'read_tuner_configuration',
       title: 'Leggi configurazione accordatore',
       description:
-        'Restituisce il preset, il riferimento A4 e la sensibilità attualmente visibili nell’accordatore.',
+        'Restituisce modalità, preset, riferimento A4 e sensibilità attualmente visibili nell’accordatore.',
       inputSchema: { type: 'object', properties: {}, additionalProperties: false },
       annotations: { readOnlyHint: true, untrustedContentHint: false },
       execute(input) {
@@ -109,7 +116,7 @@ export function useTunerWebMcp({
     });
 
     return () => lifecycle.abort();
-  }, [setPresetId, setReferencePitch, setSensitivity]);
+  }, [setMode, setPresetId, setReferencePitch, setSensitivity]);
 }
 
 function validateConfiguration(
@@ -121,15 +128,23 @@ function validateConfiguration(
     throw new Error('La configurazione deve essere un oggetto JSON.');
   }
 
-  const allowedKeys = new Set(['presetId', 'referencePitch', 'sensitivity']);
+  const allowedKeys = new Set(['mode', 'presetId', 'referencePitch', 'sensitivity']);
   if (Object.keys(input).some((key) => !allowedKeys.has(key))) {
     throw new Error('La configurazione contiene proprietà non supportate.');
   }
 
+  const requestedMode = input.mode ?? current.mode;
   const presetId = input.presetId ?? current.presetId;
   const referencePitch = input.referencePitch ?? current.referencePitch;
   const sensitivity = input.sensitivity ?? current.sensitivity;
 
+  if (
+    requestedMode !== 'auto' &&
+    requestedMode !== 'precision' &&
+    requestedMode !== 'polyphonic'
+  ) {
+    throw new Error('La modalità deve essere “auto”, “precision” oppure “polyphonic”.');
+  }
   if (typeof presetId !== 'string' || !supportedPresetIds.includes(presetId)) {
     throw new Error('Preset non riconosciuto.');
   }
@@ -150,7 +165,13 @@ function validateConfiguration(
     throw new Error('La sensibilità deve essere un intero tra 30 e 100.');
   }
 
+  const selectedPreset = INSTRUMENT_PRESETS.find((preset) => preset.id === presetId);
+  const mode = requestedMode === 'polyphonic' && (selectedPreset?.strings.length ?? 0) < 2
+    ? 'precision'
+    : requestedMode;
+
   return {
+    mode,
     presetId,
     referencePitch,
     sensitivity,
