@@ -55,6 +55,8 @@ Ogni aggiornamento del branch `main` viene verificato dalla CI. Il repository
 infrastrutturale di `gianlucabove.it`, che conserva i segreti Contabo, rileva quindi
 la nuova revisione e la pubblica come rilascio statico atomico sotto `/accorda`.
 Il build dedicato imposta il prefisso degli asset senza modificare l'output Sites.
+Ogni pubblicazione incrementa la versione SemVer in `package.json`, aggiorna data e
+versione visibili nell'interfaccia e registra il rilascio in `CHANGELOG.md`.
 
 ## Licenza
 

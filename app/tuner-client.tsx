@@ -5,6 +5,7 @@ import {
   Activity,
   AudioLines,
   Check,
+  ExternalLink,
   Expand,
   Gauge,
   House,
@@ -13,6 +14,7 @@ import {
   MicOff,
   RotateCcw,
   Sparkles,
+  X,
   Volume2,
   Waves,
 } from 'lucide-react';
@@ -30,6 +32,7 @@ import {
   useTuner,
 } from '@/hooks/use-tuner';
 import { useTunerWebMcp } from '@/hooks/use-tuner-webmcp';
+import { CHANGELOG_RELEASES } from '@/lib/changelog';
 import {
   frequencyToNote,
   getClosestString,
@@ -38,6 +41,7 @@ import {
   type InstrumentString,
   midiToFrequency,
 } from '@/lib/music';
+import { RELEASE } from '@/lib/release';
 
 const DIAL_TICKS = Array.from({ length: 21 }, (_, index) => index);
 const HISTORY_CAPACITY = 56;
@@ -59,9 +63,19 @@ export default function TunerClient() {
   const [referencePitch, setReferencePitch] = useState(440);
   const [sensitivity, setSensitivity] = useState(72);
   const [mode, setMode] = useState<TunerMode>('auto');
+  const [isChangelogOpen, setIsChangelogOpen] = useState(false);
   const [tunedStrings, setTunedStrings] = useState<Set<number>>(new Set());
   const [history, setHistory] = useState<number[]>([]);
   const holdStateRef = useRef<HoldState | null>(null);
+
+  useEffect(() => {
+    if (!isChangelogOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsChangelogOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [isChangelogOpen]);
 
   const preset = useMemo(
     () =>
@@ -272,8 +286,71 @@ export default function TunerClient() {
             <LockKeyhole aria-hidden="true" />
             <span>Audio privato · elaborato sul dispositivo</span>
           </div>
+          <div className="release-meta">
+            <button
+              type="button"
+              aria-haspopup="dialog"
+              onClick={() => setIsChangelogOpen(true)}
+            >
+              <span>{RELEASE.version}</span>
+              <time dateTime={RELEASE.dateIso}>{RELEASE.dateLabel}</time>
+            </button>
+            <a
+              href="https://github.com/gbove73/accorda/blob/main/CHANGELOG.md"
+              target="_blank"
+              rel="noreferrer"
+            >
+              CHANGELOG.md <ExternalLink aria-hidden="true" />
+            </a>
+          </div>
         </div>
       </header>
+
+      {isChangelogOpen && (
+        <dialog
+          open
+          className="changelog-overlay"
+          aria-labelledby="changelog-title"
+        >
+          <section
+            className="changelog-dialog"
+          >
+            <header>
+              <div>
+                <p className="overline">Cronologia delle pubblicazioni</p>
+                <h2 id="changelog-title">Changelog</h2>
+              </div>
+              <button
+                className="changelog-close"
+                type="button"
+                aria-label="Chiudi il changelog"
+                onClick={() => setIsChangelogOpen(false)}
+              >
+                <X aria-hidden="true" />
+              </button>
+            </header>
+            <div className="changelog-timeline">
+              {CHANGELOG_RELEASES.map((release) => (
+                <article className="changelog-release" key={release.version}>
+                  <div className="changelog-marker" aria-hidden="true" />
+                  <div className="changelog-release-heading">
+                    <strong>v{release.version}</strong>
+                    {release.date && <time dateTime={release.date}>{release.date}</time>}
+                  </div>
+                  {release.sections.map((section) => (
+                    <div className="changelog-section" key={section.title}>
+                      <h3>{section.title}</h3>
+                      <ul>
+                        {section.items.map((item) => <li key={item}>{item}</li>)}
+                      </ul>
+                    </div>
+                  ))}
+                </article>
+              ))}
+            </div>
+          </section>
+        </dialog>
+      )}
 
       <section className="intro" id="top">
         <div>

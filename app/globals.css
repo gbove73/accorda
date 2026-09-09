@@ -128,6 +128,33 @@ footer {
 .home-link svg { height: 14px; width: 14px; }
 .privacy-chip { align-items: center; background: rgba(167,139,250,.08); border: 1px solid rgba(167,139,250,.24); border-radius: 999px; color: #cdbffd; display: flex; font-size: 13px; gap: 8px; padding: 8px 13px; }
 .privacy-chip svg { height: 14px; width: 14px; }
+.release-meta { align-items: flex-end; display: flex; flex-direction: column; font-family: var(--font-geist-mono), monospace; gap: 6px; min-width: 118px; text-align: right; }
+.release-meta button { align-items: flex-end; background: none; border: 0; color: #657188; display: flex; flex-direction: column; font-family: inherit; font-size: 9px; gap: 5px; letter-spacing: .04em; line-height: 1.2; padding: 0; }
+.release-meta button:hover span { color: var(--brand-bright); }
+.release-meta button span { color: #8995aa; font-size: 10px; transition: color 160ms ease; }
+.release-meta a { align-items: center; color: #657188; display: flex; font-size: 8px; gap: 3px; letter-spacing: .02em; text-decoration: none; }
+.release-meta a:hover { color: #b4bfd1; }
+.release-meta a svg { height: 8px; width: 8px; }
+
+.changelog-overlay { align-items: center; backdrop-filter: blur(12px); background: rgba(10,7,15,.76); border: 0; display: flex; height: auto; inset: 0; justify-content: center; margin: 0; max-height: none; max-width: none; padding: 24px; position: fixed; width: auto; z-index: 50; }
+.changelog-dialog { background: #191321; border: 1px solid rgba(167,139,250,.28); border-radius: 24px; box-shadow: 0 28px 90px rgba(0,0,0,.55); max-height: min(82vh, 820px); max-width: 760px; overflow: auto; padding: 26px; width: 100%; }
+.changelog-dialog > header { align-items: flex-start; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; margin-bottom: 24px; padding-bottom: 18px; }
+.changelog-dialog h2 { font-size: 28px; letter-spacing: -.035em; margin: 0; }
+.changelog-close { align-items: center; background: rgba(255,255,255,.04); border: 1px solid var(--line); border-radius: 50%; color: #a9b3c5; display: flex; height: 36px; justify-content: center; padding: 0; width: 36px; }
+.changelog-close:hover { border-color: rgba(255,122,110,.4); color: var(--brand-bright); }
+.changelog-close svg { height: 16px; width: 16px; }
+.changelog-timeline { position: relative; }
+.changelog-timeline::before { background: linear-gradient(var(--brand), var(--flat), transparent); content: ''; left: 7px; position: absolute; top: 8px; bottom: 0; width: 1px; }
+.changelog-release { padding: 0 0 30px 34px; position: relative; }
+.changelog-release:last-child { padding-bottom: 2px; }
+.changelog-marker { background: var(--brand); border: 4px solid #281d33; border-radius: 50%; box-shadow: 0 0 18px rgba(255,122,110,.35); height: 15px; left: 0; position: absolute; top: 4px; width: 15px; }
+.changelog-release-heading { align-items: baseline; display: flex; gap: 12px; margin-bottom: 16px; }
+.changelog-release-heading strong { color: #fff; font-family: var(--font-geist-mono), monospace; font-size: 17px; }
+.changelog-release-heading time { color: #727e92; font-family: var(--font-geist-mono), monospace; font-size: 10px; }
+.changelog-section { background: rgba(255,255,255,.025); border: 1px solid var(--line); border-radius: 13px; margin-top: 9px; padding: 13px 15px; }
+.changelog-section h3 { color: var(--tuned); font-family: var(--font-geist-mono), monospace; font-size: 10px; letter-spacing: .12em; margin: 0 0 8px; text-transform: uppercase; }
+.changelog-section ul { color: #aab3c2; font-size: 12px; line-height: 1.55; margin: 0; padding-left: 17px; }
+.changelog-section li + li { margin-top: 6px; }
 
 .intro { align-items: end; display: grid; gap: 32px; grid-template-columns: minmax(0, 1fr) minmax(280px, 520px); padding: 42px 0 28px; }
 .eyebrow, .overline { color: var(--brand); font-family: var(--font-geist-mono), monospace; font-size: 11px; font-weight: 650; letter-spacing: .13em; margin: 0 0 10px; text-transform: uppercase; }
@@ -345,6 +372,8 @@ footer svg { height: 12px; width: 12px; }
 }
 
 @media (max-width: 430px) {
+  .changelog-overlay { padding: 10px; }
+  .changelog-dialog { border-radius: 18px; padding: 20px 16px; }
   .mode-switch button { font-size: 11px; }
   .polyphonic-strings { grid-template-columns: repeat(3, 1fr); }
 }

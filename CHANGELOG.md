@@ -6,6 +6,20 @@ progetto adotta [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-09-09
+
+### Added
+
+- Visualizzazione discreta di versione e data di pubblicazione nell'intestazione.
+
+### Fixed
+
+- Corretto il rilevamento polifonico delle corde omonime a ottave diverse, come i
+  due Re del Drop D e la coppia Mi grave/Mi cantino, anche quando la corda più
+  grave è dominante o le due corde hanno scostamenti d'intonazione differenti.
+
+## [0.1.0] - 2026-09-08
+
 ### Added
 
 - Pubblicazione del codice sorgente con licenza open source MIT, metadati GitHub e
@@ -50,6 +64,3 @@ progetto adotta [Semantic Versioning](https://semver.org/lang/it/).
 
 - Evitati aggiornamenti ripetuti quando una corda già confermata rimane stabilmente
   intonata durante una sessione di ascolto prolungata.
-- Corretto il rilevamento polifonico delle corde omonime a ottave diverse, come i
-  due Re del Drop D e la coppia Mi grave/Mi cantino, anche quando la corda più
-  grave è dominante o le due corde hanno scostamenti d'intonazione differenti.

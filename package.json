@@ -1,6 +1,6 @@
 {
   "name": "accorda",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Accordatore cromatico e polifonico open source eseguito interamente nel browser.",
   "license": "MIT",
