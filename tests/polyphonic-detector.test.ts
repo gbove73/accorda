@@ -76,6 +76,23 @@ void test('distingue i due Re del Drop D anche con scostamenti diversi', () => {
   assertDetectedWithinTwoCents(detections[2], actualFrequencies[2], 'Re superiore');
 });
 
+void test('mantiene il Re grave debole anche quando emerge quasi solo la fondamentale', () => {
+  const lowD = DROP_D_GUITAR[0] * 2 ** (-5 / 1200);
+  const highD = DROP_D_GUITAR[2] * 2 ** (6 / 1200);
+  const samples = synthesizeStrum(
+    [lowD, highD],
+    0.8,
+    [0.28, 1.5],
+    [[1, 0.012, 0.008, 0.004, 0.002], [1, 0.52, 0.27, 0.14, 0.08]],
+  );
+  const detections = detectPolyphonicPitches(samples, SAMPLE_RATE, DROP_D_GUITAR, {
+    minRms: 0.002,
+  });
+
+  assertDetectedWithinTwoCents(detections[0], lowD, 'Re grave debole');
+  assertDetectedWithinTwoCents(detections[2], highD, 'Re superiore dominante');
+});
+
 void test('distingue Mi grave e Mi cantino con la corda grave dominante', () => {
   const offsets = [-8, 0.4, -1.1, 1.3, -0.7, 6.5];
   const actualFrequencies = STANDARD_GUITAR.map(
@@ -105,11 +122,13 @@ function synthesizeStrum(
   frequencies: number[],
   masterGain = 0.8,
   stringGains: number[] = [],
+  harmonicProfiles: number[][] = [],
 ) {
   const samples = new Float32Array(SAMPLE_COUNT);
-  const harmonics = [1, 0.52, 0.27, 0.14, 0.08];
+  const defaultHarmonics = [1, 0.52, 0.27, 0.14, 0.08];
 
   frequencies.forEach((frequency, stringIndex) => {
+    const harmonics = harmonicProfiles[stringIndex] ?? defaultHarmonics;
     const stringGain = masterGain *
       (stringGains[stringIndex] ?? 0.78 + stringIndex * 0.045) /
       frequencies.length;

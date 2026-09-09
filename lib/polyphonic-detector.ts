@@ -62,7 +62,8 @@ export function detectPolyphonicPitches(
       targetFrequency,
       targetIndex,
     });
-    if (candidates.length < 2) return null;
+    if (candidates.length === 0) return null;
+    if (candidates.length === 1 && !isReliableFundamental(candidates[0])) return null;
 
     const cleanCandidates = candidates.filter((candidate) => !candidate.contaminated);
     // Le parziali condivise confermano l'esistenza della serie, ma non devono
@@ -84,7 +85,8 @@ export function detectPolyphonicPitches(
       (sum, candidate) => sum + Math.sqrt(candidate.relativePower),
       0,
     ) / candidates.length;
-    if (salience < MIN_SALIENCE) return null;
+    const minimumSalience = candidates.length === 1 ? 0.04 : MIN_SALIENCE;
+    if (salience < minimumSalience) return null;
 
     return { cents, confidence, frequency, salience, targetFrequency };
   });
@@ -99,6 +101,14 @@ type HarmonicCandidate = {
 };
 
 const MAX_PEAKS_PER_HARMONIC = 5;
+
+/**
+ * Una fondamentale pulita può bastare per una corda grave: le corde più acute non
+ * producono subarmoniche, quindi quel picco non può essere imitato da loro.
+ */
+function isReliableFundamental(candidate: HarmonicCandidate) {
+  return candidate.harmonic === 1 && !candidate.contaminated;
+}
 
 function collectHarmonicCandidates({
   binWidth,

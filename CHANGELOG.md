@@ -6,6 +6,13 @@ progetto adotta [Semantic Versioning](https://semver.org/lang/it/).
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-09-09
+
+### Fixed
+
+- Mantenuto il rilevamento del Re grave in Drop D quando il segnale diretto è
+  debole e le sue armoniche sono coperte dal Re superiore dominante.
+
 ## [1.0.0] - 2026-09-09
 
 ### Added
