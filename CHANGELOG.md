@@ -50,3 +50,6 @@ progetto adotta [Semantic Versioning](https://semver.org/lang/it/).
 
 - Evitati aggiornamenti ripetuti quando una corda già confermata rimane stabilmente
   intonata durante una sessione di ascolto prolungata.
+- Corretto il rilevamento polifonico delle corde omonime a ottave diverse, come i
+  due Re del Drop D e la coppia Mi grave/Mi cantino, anche quando la corda più
+  grave è dominante o le due corde hanno scostamenti d'intonazione differenti.

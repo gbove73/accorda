@@ -6,6 +6,7 @@ import { detectPolyphonicPitches } from '../lib/polyphonic-detector.ts';
 const SAMPLE_RATE = 48_000;
 const SAMPLE_COUNT = 32_768;
 const STANDARD_GUITAR = [82.4069, 110, 146.8324, 196, 246.9417, 329.6276];
+const DROP_D_GUITAR = [73.4162, 110, 146.8324, 196, 246.9417, 329.6276];
 
 void test('misura simultaneamente sei corde con errore inferiore a un cent', () => {
   const offsets = [-7.2, 4.5, -0.8, 0.6, 8.4, -3.7];
@@ -61,13 +62,57 @@ void test('distingue una corda singola da una pennata polifonica', () => {
   assert.ok(detections[2]);
 });
 
+void test('distingue i due Re del Drop D anche con scostamenti diversi', () => {
+  const offsets = [-9, 1.2, 7, -0.5, 2.1, -1.4];
+  const actualFrequencies = DROP_D_GUITAR.map(
+    (frequency, index) => frequency * 2 ** ((offsets[index] ?? 0) / 1200),
+  );
+  const samples = synthesizeStrum(actualFrequencies, 0.8, [1.7, 1, 0.72, 0.9, 0.86, 0.78]);
+  const detections = detectPolyphonicPitches(samples, SAMPLE_RATE, DROP_D_GUITAR, {
+    minRms: 0.002,
+  });
+
+  assertDetectedWithinTwoCents(detections[0], actualFrequencies[0], 'Re grave');
+  assertDetectedWithinTwoCents(detections[2], actualFrequencies[2], 'Re superiore');
+});
+
+void test('distingue Mi grave e Mi cantino con la corda grave dominante', () => {
+  const offsets = [-8, 0.4, -1.1, 1.3, -0.7, 6.5];
+  const actualFrequencies = STANDARD_GUITAR.map(
+    (frequency, index) => frequency * 2 ** ((offsets[index] ?? 0) / 1200),
+  );
+  const samples = synthesizeStrum(actualFrequencies, 0.8, [1.8, 0.95, 0.9, 0.84, 0.8, 0.65]);
+  const detections = detectPolyphonicPitches(samples, SAMPLE_RATE, STANDARD_GUITAR, {
+    minRms: 0.002,
+  });
+
+  assertDetectedWithinTwoCents(detections[0], actualFrequencies[0], 'Mi grave');
+  assertDetectedWithinTwoCents(detections[5], actualFrequencies[5], 'Mi cantino');
+});
+
+function assertDetectedWithinTwoCents(
+  detection: ReturnType<typeof detectPolyphonicPitches>[number],
+  expectedFrequency: number,
+  label: string,
+) {
+  assert.ok(detection, `${label} non rilevato`);
+  const errorInCents = Math.abs(1200 * Math.log2(detection.frequency / expectedFrequency));
+  assert.ok(errorInCents <= 2, `${label}: errore ${errorInCents.toFixed(3)} cent`);
+}
+
 /** Crea una pennata ripetibile con attacco, armoniche, fasi diverse e rumore. */
-function synthesizeStrum(frequencies: number[], masterGain = 0.8) {
+function synthesizeStrum(
+  frequencies: number[],
+  masterGain = 0.8,
+  stringGains: number[] = [],
+) {
   const samples = new Float32Array(SAMPLE_COUNT);
   const harmonics = [1, 0.52, 0.27, 0.14, 0.08];
 
   frequencies.forEach((frequency, stringIndex) => {
-    const stringGain = masterGain * (0.78 + stringIndex * 0.045) / frequencies.length;
+    const stringGain = masterGain *
+      (stringGains[stringIndex] ?? 0.78 + stringIndex * 0.045) /
+      frequencies.length;
     for (let sampleIndex = 0; sampleIndex < samples.length; sampleIndex += 1) {
       const time = sampleIndex / SAMPLE_RATE;
       const attack = Math.min(1, sampleIndex / 850);

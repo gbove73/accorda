@@ -18,6 +18,7 @@ const DEFAULT_OPTIONS = {
   minSignalToNoiseDb: 10,
 };
 const MIN_RELATIVE_PARTIAL_DB = -36;
+const MIN_SALIENCE = 0.075;
 
 /**
  * Analizza più fondamentali note in anticipo usando un unico spettro ad alta
@@ -63,7 +64,11 @@ export function detectPolyphonicPitches(
     });
     if (candidates.length < 2) return null;
 
-    const frequency = median(candidates.map((candidate) => candidate.frequency));
+    const cleanCandidates = candidates.filter((candidate) => !candidate.contaminated);
+    // Le parziali condivise confermano l'esistenza della serie, ma non devono
+    // spostarne la misura verso una corda omonima o una vicina più potente.
+    const measurementCandidates = cleanCandidates.length > 0 ? cleanCandidates : candidates;
+    const frequency = median(measurementCandidates.map((candidate) => candidate.frequency));
     const cents = 1200 * Math.log2(frequency / targetFrequency);
     if (Math.abs(cents) > settings.maxDeviationCents) return null;
 
@@ -79,6 +84,7 @@ export function detectPolyphonicPitches(
       (sum, candidate) => sum + Math.sqrt(candidate.relativePower),
       0,
     ) / candidates.length;
+    if (salience < MIN_SALIENCE) return null;
 
     return { cents, confidence, frequency, salience, targetFrequency };
   });
@@ -87,9 +93,12 @@ export function detectPolyphonicPitches(
 type HarmonicCandidate = {
   contaminated: boolean;
   frequency: number;
+  harmonic: number;
   relativePower: number;
   signalToNoiseDb: number;
 };
+
+const MAX_PEAKS_PER_HARMONIC = 5;
 
 function collectHarmonicCandidates({
   binWidth,
@@ -126,23 +135,30 @@ function collectHarmonicCandidates({
     const upperFrequency = expectedHarmonic * 2 ** (maxDeviationCents / 1200);
     const lowerBin = Math.max(2, Math.floor(lowerFrequency / binWidth));
     const upperBin = Math.min(spectrum.length - 3, Math.ceil(upperFrequency / binWidth));
-    const peakBin = findStrongestPeak(spectrum, lowerBin, upperBin);
-    if (peakBin === null) continue;
+    const peakBins = findStrongestPeaks(
+      spectrum,
+      lowerBin,
+      upperBin,
+      MAX_PEAKS_PER_HARMONIC,
+    );
 
-    const refinedBin = interpolatePeak(spectrum, peakBin);
-    const peakPower = interpolatePower(spectrum, refinedBin);
-    const signalToNoiseDb = 10 * Math.log10(peakPower / noiseFloor);
-    const relativePartialDb = 10 * Math.log10(peakPower / strongestSpectrumPower);
-    if (
-      signalToNoiseDb < minSignalToNoiseDb ||
-      relativePartialDb < MIN_RELATIVE_PARTIAL_DB
-    ) continue;
-    candidates.push({
-      contaminated,
-      frequency: refinedBin * binWidth / harmonic,
-      relativePower: peakPower / strongestSpectrumPower,
-      signalToNoiseDb,
-    });
+    for (const peakBin of peakBins) {
+      const refinedBin = interpolatePeak(spectrum, peakBin);
+      const peakPower = interpolatePower(spectrum, refinedBin);
+      const signalToNoiseDb = 10 * Math.log10(peakPower / noiseFloor);
+      const relativePartialDb = 10 * Math.log10(peakPower / strongestSpectrumPower);
+      if (
+        signalToNoiseDb < minSignalToNoiseDb ||
+        relativePartialDb < MIN_RELATIVE_PARTIAL_DB
+      ) continue;
+      candidates.push({
+        contaminated,
+        frequency: refinedBin * binWidth / harmonic,
+        harmonic,
+        relativePower: peakPower / strongestSpectrumPower,
+        signalToNoiseDb,
+      });
+    }
   }
   return selectConsistentCandidates(candidates);
 }
@@ -174,11 +190,17 @@ function selectConsistentCandidates(candidates: HarmonicCandidate[]) {
   let bestCluster: HarmonicCandidate[] = [];
   let bestScore = Number.NEGATIVE_INFINITY;
   for (const anchor of candidates) {
-    const cluster = candidates.filter((candidate) => (
-      Math.abs(1200 * Math.log2(candidate.frequency / anchor.frequency)) <= 6
-    ));
+    const matchingCandidates = candidates.filter((candidate) => {
+      const distanceInCents = Math.abs(
+        1200 * Math.log2(candidate.frequency / anchor.frequency),
+      );
+      return distanceInCents <= 6;
+    });
+    const cluster = selectStrongestCandidatePerHarmonic(matchingCandidates);
     const cleanCandidates = cluster.filter((candidate) => !candidate.contaminated).length;
-    if (cleanCandidates === 0) continue;
+    // In alcune accordature tutte le prime parziali coincidono con altre corde:
+    // tre armoniche concordi costituiscono comunque una firma indipendente robusta.
+    if (cleanCandidates === 0 && cluster.length < 3) continue;
     const averageSignalToNoise = cluster.reduce(
       (sum, candidate) => sum + candidate.signalToNoiseDb,
       0,
@@ -190,6 +212,22 @@ function selectConsistentCandidates(candidates: HarmonicCandidate[]) {
     }
   }
   return bestCluster;
+}
+
+/**
+ * Ogni parziale può contenere sia il picco della corda cercata sia un'armonica di
+ * una corda omonima più grave. Conservare più picchi permette al consenso finale
+ * di seguire la serie coerente senza contare due volte la stessa parziale.
+ */
+function selectStrongestCandidatePerHarmonic(candidates: HarmonicCandidate[]) {
+  const strongestByHarmonic = new Map<number, HarmonicCandidate>();
+  for (const candidate of candidates) {
+    const current = strongestByHarmonic.get(candidate.harmonic);
+    if (!current || candidate.relativePower > current.relativePower) {
+      strongestByHarmonic.set(candidate.harmonic, candidate);
+    }
+  }
+  return [...strongestByHarmonic.values()];
 }
 
 function centerSignal(input: Float32Array) {
@@ -288,20 +326,25 @@ function findStrongestSpectrumPower(spectrum: Float64Array) {
   return strongestPower;
 }
 
-function findStrongestPeak(spectrum: Float64Array, lowerBin: number, upperBin: number) {
-  let strongestBin: number | null = null;
-  let strongestPower = 0;
+function findStrongestPeaks(
+  spectrum: Float64Array,
+  lowerBin: number,
+  upperBin: number,
+  maximumPeakCount: number,
+) {
+  const peaks: Array<{ bin: number; power: number }> = [];
   for (let bin = lowerBin; bin <= upperBin; bin += 1) {
     if (
       spectrum[bin] >= spectrum[bin - 1] &&
-      spectrum[bin] > spectrum[bin + 1] &&
-      spectrum[bin] > strongestPower
+      spectrum[bin] > spectrum[bin + 1]
     ) {
-      strongestPower = spectrum[bin];
-      strongestBin = bin;
+      peaks.push({ bin, power: spectrum[bin] });
     }
   }
-  return strongestBin;
+  return peaks
+    .sort((left, right) => right.power - left.power)
+    .slice(0, maximumPeakCount)
+    .map((peak) => peak.bin);
 }
 
 function interpolatePeak(spectrum: Float64Array, peakBin: number) {
